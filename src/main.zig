@@ -36,7 +36,7 @@ pub fn main() !void {
     const TILE_COL = 10;
     const TILE_HEI = 5;
 
-    var tile_drawing_offset = rl.Vector2.init(107.5, 104.0).scale(scale);
+    var tile_drawing_offset = rl.Vector2.init(106.5, 104.0).scale(scale);
 
     // Main game loop
     while (!rl.windowShouldClose()) { // Detect window close button or ESC key
