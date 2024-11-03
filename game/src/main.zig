@@ -6,7 +6,6 @@ const render = @import("./render/render.zig");
 
 // TODO: Move to config, best to use .toml file
 const SCREEN_SIZE: rl.Vector2 = .{ .x = 1000, .y = 1000 };
-const _ = core.tile.Tile{ .type = .grass };
 
 pub fn main() !void {
     //--------------------------------------------------------------------------------------
