@@ -13,7 +13,7 @@ const targets = [_]Target{
     .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .windows }, .name = "x86_64-windows" },
 };
 
-const APP_NAME = "izigometric-battle";
+const APP_NAME = "isometric-spritesheet-editor";
 const VERSION = "0.1.0";
 
 pub fn build(b: *std.Build) !void {
