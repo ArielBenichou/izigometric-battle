@@ -4,6 +4,9 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // =================
+    // ==== INSTALL ====
+    // =================
     // Expose modules for others to import
     const core_module = b.addModule("core", .{
         .root_source_file = b.path("src/root.zig"),
@@ -12,7 +15,7 @@ pub fn build(b: *std.Build) void {
         .imports = &.{},
     });
 
-    // RAYLIB & RAYGUI
+    // --- RAYLIB & RAYGUI
     const raylib_dep = b.dependency("raylib", .{
         .target = core_module.resolved_target.?,
         .optimize = core_module.optimize.?,
@@ -34,7 +37,9 @@ pub fn build(b: *std.Build) void {
     lib.linkLibCpp();
     b.installArtifact(lib);
 
-    // TEST
+    // ==============
+    // ==== TEST ====
+    // ==============
     const lib_unit_tests = b.addTest(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
