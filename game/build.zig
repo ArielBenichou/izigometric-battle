@@ -15,6 +15,7 @@ pub fn build(b: *std.Build) !void {
         const target = b.resolveTargetQuery(t);
         const optimize = std.builtin.OptimizeMode.ReleaseSafe;
 
+        // EXE
         const exe = b.addExecutable(.{
             .name = "izigometric-battle",
             .root_source_file = b.path("src/main.zig"),
@@ -23,16 +24,25 @@ pub fn build(b: *std.Build) !void {
         });
         exe.linkLibCpp();
 
-        const raylib_zig = b.dependency("raylib-zig", .{
+        // RAYLIB & RAYGUI
+        const raylib_dep = b.dependency("raylib", .{
             .target = target,
             .optimize = optimize,
         });
-        const raylib = raylib_zig.module("raylib");
-        const raygui = raylib_zig.module("raygui");
-        const raylib_artifact = raylib_zig.artifact("raylib");
+        const raylib = raylib_dep.module("raylib");
+        const raygui = raylib_dep.module("raygui");
+        const raylib_artifact = raylib_dep.artifact("raylib");
         exe.linkLibrary(raylib_artifact);
         exe.root_module.addImport("raylib", raylib);
         exe.root_module.addImport("raygui", raygui);
+
+        // CORE
+        const core_dep = b.dependency("core", .{
+            .target = target,
+            .optimize = optimize,
+        });
+        const core = core_dep.module("core");
+        exe.root_module.addImport("core", core);
 
         // Custom destination directory
         const target_output = b.addInstallArtifact(exe, .{
