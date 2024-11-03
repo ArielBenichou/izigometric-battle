@@ -1,5 +1,6 @@
 const std = @import("std");
 const rl = @import("raylib");
+const gui = @import("raygui");
 const render = @import("./render/render.zig");
 
 // TODO: Move to config, best to use .toml file
@@ -119,6 +120,13 @@ pub fn main() !void {
         { // UI
             if (is_debug) {
                 rl.drawFPS(10, 10);
+            }
+
+            if (gui.guiButton(
+                rl.Rectangle.init(10, 40, 100, 30),
+                "Button",
+            ) == 1) {
+                std.debug.print("Clicked!", .{});
             }
         }
 

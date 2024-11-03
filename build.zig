@@ -28,9 +28,11 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
         });
         const raylib = raylib_zig.module("raylib");
+        const raygui = raylib_zig.module("raygui");
         const raylib_artifact = raylib_zig.artifact("raylib");
         exe.linkLibrary(raylib_artifact);
         exe.root_module.addImport("raylib", raylib);
+        exe.root_module.addImport("raygui", raygui);
 
         // Custom destination directory
         const target_output = b.addInstallArtifact(exe, .{
