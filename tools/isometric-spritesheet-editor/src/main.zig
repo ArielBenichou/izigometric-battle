@@ -46,7 +46,7 @@ pub fn main() !void {
             const wheel = rl.getMouseWheelMove();
             if (wheel != 0) {
                 // Get the world point that is under the mouse
-                const mouseWorldPos = rl.getScreenToWorld2D(
+                const mouse_world_pos = rl.getScreenToWorld2D(
                     rl.getMousePosition(),
                     camera,
                 );
@@ -56,14 +56,14 @@ pub fn main() !void {
 
                 // Set the target to match, so that the camera maps the world space point
                 // under the cursor to the screen space point under the cursor at any zoom
-                camera.target = mouseWorldPos;
+                camera.target = mouse_world_pos;
 
                 // Zoom increment
 
-                var scaleFactor = 1.0 + (0.25 * @abs(wheel));
-                if (wheel < 0) scaleFactor = 1.0 / scaleFactor;
+                var scale_factor = 1.0 + (0.25 * @abs(wheel));
+                if (wheel < 0) scale_factor = 1.0 / scale_factor;
                 camera.zoom = rl.math.clamp(
-                    camera.zoom * scaleFactor,
+                    camera.zoom * scale_factor,
                     0.125,
                     64.0,
                 );
