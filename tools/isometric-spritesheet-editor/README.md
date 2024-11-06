@@ -21,9 +21,9 @@ zig build release
 ## TODO
 - [ ] UI
   - [ ] Two tabs, between tile config, and sprite tagger
-  - [ ] zoom in and out with middle mouse scroll
-  - [ ] move camera with middle mouse click
-  - [ ] transparent grid for sprite, grey background.
+  - [x] zoom in and out with middle mouse scroll
+  - [x] move camera with middle mouse drag OR space + right mouse drag
+  - [x] transparent grid for sprite, grey background.
 - [ ] highlight tagged spirte with isometric bounding box, and sprite bounding box
 - [ ] small name on top
 - [ ] easy tagger - click on a point and it should snap to the grid with a new tag

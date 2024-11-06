@@ -18,7 +18,7 @@ pub fn main() !void {
 
     // TODO: load tex from file picker
     const tile = rl.loadTexture("./../../game/assets/tiles_spritesheet.png");
-    rl.setTextureFilter(tile, .texture_filter_trilinear);
+    rl.setTextureFilter(tile, .texture_filter_point);
     defer tile.unload();
 
     // Camera
@@ -29,14 +29,50 @@ pub fn main() !void {
         .zoom = 1.0,
     };
 
+    // TODO: create a big State of the program state
+
+    // Iso Box
+    var spirtesheet_iso_box = core.rlx.IsometricBox.init(
+        rl.Vector2.init(0, 0),
+        rl.Vector2.init(0, 50),
+        rl.Vector2.init(-100, -40),
+        rl.Vector2.init(100, -40),
+    );
+    const iso_box_pos = rl.Vector2.init(100, 100); // world position
+
+    var is_dragging = false;
+    var box_point_dragging: []const u8 = undefined;
+
+    // TODO: think of a system for easier control of what action is happening
+    // if we can have a list of action and define what the user does,
+    // then we can render the cursor more easily without becoming unmatinable fast
+    // same for render.
+    // maybe we should cake it like that:
+    // INPUT -> STATE (part of the state is desired_action: Action enum)
+    // ----
+    // ACTION -> STATE (the desired_action is applied to the state)
+    // ----
+    // STATE -> RENDER
     while (!rl.windowShouldClose()) {
+        const center_point = rl.Vector2.init(
+            @as(f32, @floatFromInt(rl.getScreenWidth())) / 2.0,
+            @as(f32, @floatFromInt(rl.getScreenHeight())) / 2.0,
+        ); // screen position
+
+        const iso_box = spirtesheet_iso_box.add(center_point.add(iso_box_pos));
         // ---LOGIC HERE
+        { // Cleanup
+            rl.setMouseCursor(.mouse_cursor_default);
+        }
         { // Translate based on mouse middle click
             // or space + left_mouse_drag
-            // TODO: cursor icon
-            const is_space_dragging = rl.isKeyDown(.key_space) and rl.isMouseButtonDown(.mouse_button_left);
-            const is_middle_mouse_dragging = rl.isMouseButtonDown(.mouse_button_middle);
-            if (is_space_dragging or is_middle_mouse_dragging) {
+            const is_key_down_space = rl.isKeyDown(.key_space);
+            const is_space_dragging = is_key_down_space and rl.isMouseButtonDown(.mouse_button_left);
+            const is_middle_mouse_down = rl.isMouseButtonDown(.mouse_button_middle);
+            if (is_key_down_space or is_middle_mouse_down) {
+                rl.setMouseCursor(.mouse_cursor_pointing_hand);
+            }
+            if (is_space_dragging or is_middle_mouse_down) {
                 var delta = rl.getMouseDelta();
                 delta = delta.scale(-1.0 / camera.zoom);
                 camera.target = camera.target.add(delta);
@@ -70,18 +106,52 @@ pub fn main() !void {
             }
         }
 
+        { // move handle of iso_box
+            if (is_dragging) {
+                rl.setMouseCursor(.mouse_cursor_pointing_hand);
+                var delta = rl.getMouseDelta();
+                delta = delta.scale(1.0 / camera.zoom);
+                const last_point_value: rl.Vector2 = try spirtesheet_iso_box.getField(box_point_dragging);
+                try spirtesheet_iso_box.setField(box_point_dragging, last_point_value.add(delta));
+            } else {
+                const force_field_radius = 3;
+                const iso_box_fields = std.meta.fields(core.rlx.IsometricBox); // try @TypeOf
+                inline for (iso_box_fields) |field| {
+                    if (isMouseHoveringAroundPosition(
+                        @field(iso_box, field.name),
+                        force_field_radius,
+                        camera,
+                    )) {
+                        rl.setMouseCursor(.mouse_cursor_pointing_hand);
+                        if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                            is_dragging = true;
+                            box_point_dragging = field.name;
+                        }
+                    }
+                }
+            }
+            if (rl.isMouseButtonReleased(.mouse_button_left)) {
+                is_dragging = false;
+            }
+        }
+
         rl.beginDrawing();
         defer rl.endDrawing();
         rl.clearBackground(rl.Color.dark_gray);
         // ---RENDER HERE
         { // INSIDE CAMERA
-            const center_point = rl.Vector2.init(
-                @as(f32, @floatFromInt(rl.getScreenWidth())) / 2.0,
-                @as(f32, @floatFromInt(rl.getScreenHeight())) / 2.0,
-            );
             camera.begin();
             defer camera.end();
-            drawTileWithCheckerboard(&tile, center_point);
+
+            core.rlx.Texture.drawWithCheckerboard(&tile, center_point);
+            spirtesheet_iso_box.drawBoundingBox(
+                center_point.add(iso_box_pos),
+                rl.Color.magenta,
+            );
+            spirtesheet_iso_box.drawHandles(
+                center_point.add(iso_box_pos),
+                rl.Color.magenta,
+            );
         }
 
         { // UI
@@ -92,69 +162,8 @@ pub fn main() !void {
         }
     }
 }
-// TODO: move all utils func to core.rlx
-fn tileSize(tile: *const rl.Texture) rl.Vector2 {
-    return rl.Vector2.init(
-        @as(f32, @floatFromInt(tile.width)),
-        @as(f32, @floatFromInt(tile.height)),
-    );
-}
 
-fn drawTileWithCheckerboard(tile: *const rl.Texture, pos: rl.Vector2) void {
-    drawCheckerboardV(pos, tileSize(tile), 10);
-    tile.drawV(
-        pos,
-        rl.Color.white,
-    );
-}
-
-fn drawCheckerboard(posX: f32, posY: f32, width: f32, height: f32, resolution: comptime_int) void {
-    // TODO: use divCeil for covering the case of exact match
-    // const cols: usize = @intFromFloat(std.math.divCeil(f32, width, res_f32));
-    const cols: usize = @as(usize, @intFromFloat(width / resolution)) + 1;
-    const rows: usize = @as(usize, @intFromFloat(height / resolution)) + 1;
-    for (0..cols) |x| {
-        const x_float: f32 = @floatFromInt(x);
-        for (0..rows) |y| {
-            const y_float: f32 = @floatFromInt(y);
-            const color = if ((x + y) % 2 == 0) rl.Color.white else rl.Color.light_gray;
-            const x_offset: f32 = resolution * x_float;
-            const x_diff_width = width - x_offset;
-            const y_offset: f32 = resolution * y_float;
-            const y_diff_height = height - y_offset;
-            rl.drawRectangleRec(
-                rl.Rectangle.init(
-                    posX + x_offset,
-                    posY + y_offset,
-                    if (x_diff_width >= resolution) resolution else x_diff_width,
-                    if (y_diff_height >= resolution) resolution else y_diff_height,
-                ),
-                color,
-            );
-        }
-    }
-    // {
-    //     const drawn_width: f32 = @floatFromInt(cols * resolution);
-    //     if (drawn_width < width) {
-    //         rl.drawRectangleRec(
-    //             rl.Rectangle.init(
-    //                 posX + drawn_width,
-    //                 posY,
-    //                 width - drawn_width,
-    //                 height,
-    //             ),
-    //             rl.Color.magenta,
-    //         );
-    //     }
-    // }
-}
-
-fn drawCheckerboardV(pos: rl.Vector2, size: rl.Vector2, resolution: comptime_int) void {
-    return drawCheckerboard(
-        pos.x,
-        pos.y,
-        size.x,
-        size.y,
-        resolution,
-    );
+pub fn isMouseHoveringAroundPosition(position: rl.Vector2, radius: f32, camera: rl.Camera2D) bool {
+    const mouse_world_pos = rl.getScreenToWorld2D(rl.getMousePosition(), camera);
+    return @abs(mouse_world_pos.distance(position)) < radius;
 }

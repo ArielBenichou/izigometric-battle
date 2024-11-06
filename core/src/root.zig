@@ -1,1 +1,2 @@
-pub const tile = @import("tile.zig");
+pub const tile = @import("models/tile.zig");
+pub const rlx = @import("extensions/rlx.zig");
