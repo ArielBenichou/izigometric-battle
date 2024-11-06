@@ -42,7 +42,7 @@ pub fn main() !void {
     const iso_box_pos = rl.Vector2.init(100, 100); // world position
 
     var is_dragging = false;
-    var box_point_dragging: []const u8 = undefined;
+    var box_vertex_dragging: core.rlx.IsometricBox.VertexName = undefined;
 
     // TODO: think of a system for easier control of what action is happening
     // if we can have a list of action and define what the user does,
@@ -112,21 +112,29 @@ pub fn main() !void {
                 rl.setMouseCursor(.mouse_cursor_pointing_hand);
                 var delta = rl.getMouseDelta();
                 delta = delta.scale(1.0 / camera.zoom);
-                const last_point_value: rl.Vector2 = try spirtesheet_iso_box.getField(box_point_dragging);
-                try spirtesheet_iso_box.setField(box_point_dragging, last_point_value.add(delta));
+                const last_point_value: rl.Vector2 = spirtesheet_iso_box.getVertex(box_vertex_dragging);
+                spirtesheet_iso_box.setVertex(box_vertex_dragging, last_point_value.add(delta));
             } else {
                 const force_field_radius = 3;
-                const iso_box_fields = std.meta.fields(core.rlx.IsometricBox); // try @TypeOf
-                inline for (iso_box_fields) |field| {
+                const handle_verticies = [_]core.rlx.IsometricBox.VertexName{
+                    .top_back,
+                    .top_front,
+                    .bottom_front,
+                    .top_right,
+                    .bottom_right,
+                    .top_left,
+                    .bottom_left,
+                };
+                inline for (handle_verticies) |vertex| {
                     if (isMouseHoveringAroundPosition(
-                        @field(iso_box, field.name),
+                        iso_box.getVertex(vertex),
                         force_field_radius,
                         camera,
                     )) {
                         rl.setMouseCursor(.mouse_cursor_pointing_hand);
                         if (rl.isMouseButtonPressed(.mouse_button_left)) {
                             is_dragging = true;
-                            box_point_dragging = field.name;
+                            box_vertex_dragging = vertex;
                         }
                     }
                 }
