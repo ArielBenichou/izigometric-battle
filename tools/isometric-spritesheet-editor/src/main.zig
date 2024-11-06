@@ -40,10 +40,10 @@ pub fn main() !void {
     // TODO: create a big State of the program state
     // Iso Box
     var spirtesheet_iso_box = core.rlx.IsometricBox.init(
-        rl.Vector2.init(3.490075e0, 3.278778e0),
-        rl.Vector2.init(3.484404e0, 5.489115e1),
-        rl.Vector2.init(-9.973059e1, -4.8500137e1),
-        rl.Vector2.init(1.06128815e2, -4.8290726e1),
+        config.prespective_points[0],
+        config.prespective_points[1],
+        config.prespective_points[2],
+        config.prespective_points[3],
     );
     // TODO: think of an easy system to manage world and screen positions
     const iso_box_pos = config.tags[0].position;

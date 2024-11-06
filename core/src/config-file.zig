@@ -17,7 +17,12 @@ pub const Config = struct {
 
     pub fn deinit(self: *Config, allocator: std.mem.Allocator) void {
         allocator.free(self.prespective_points);
-        allocator.free(self.tags);
+
+        defer allocator.free(self.tags);
+        for (self.tags) |tag| {
+            allocator.free(tag.name);
+            allocator.free(tag.variant);
+        }
     }
 };
 
