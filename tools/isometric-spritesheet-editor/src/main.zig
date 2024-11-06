@@ -148,19 +148,19 @@ pub fn main() !void {
         defer rl.endDrawing();
         rl.clearBackground(rl.Color.dark_gray);
         // ---RENDER HERE
+        const drawing_color = rl.Color.magenta.alpha(if (is_dragging) 0.5 else 1);
         { // INSIDE CAMERA
             camera.begin();
             defer camera.end();
 
             core.rlx.Texture.drawWithCheckerboard(&tile, center_point);
-            spirtesheet_iso_box.drawBoundingBox(
+            spirtesheet_iso_box.drawMesh(
                 center_point.add(iso_box_pos),
-                rl.Color.magenta,
+                drawing_color,
             );
-            // TODO: we probably want the currently dragged handle to be semi transperent to see underneath
             spirtesheet_iso_box.drawHandles(
                 center_point.add(iso_box_pos),
-                rl.Color.magenta,
+                drawing_color,
             );
         }
 

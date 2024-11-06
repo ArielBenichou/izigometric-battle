@@ -140,7 +140,6 @@ pub const IsometricBox = struct {
     }
 
     // RENDER
-    // TODO: add opacity
     pub fn drawHandles(
         iso_box: IsometricBox,
         position: rl.Vector2,
@@ -159,9 +158,7 @@ pub const IsometricBox = struct {
         drawCrossHandle(ib.center(), color);
     }
 
-    // TODO: add opacity
-    // TODO: rename to Mesh
-    pub fn drawBoundingBoxEx(
+    pub fn drawMeshEx(
         iso_box: IsometricBox,
         position: rl.Vector2,
         thick: f32,
@@ -218,7 +215,7 @@ pub const IsometricBox = struct {
             ib.getVertex(.top_back),
             ib.getVertex(.bottom_back),
             thick,
-            color.alpha(opacity),
+            Color.multiply(color, opacity),
         );
 
         // Bottom Plane
@@ -232,13 +229,13 @@ pub const IsometricBox = struct {
             ib.getVertex(.bottom_left),
             ib.getVertex(.bottom_back),
             thick,
-            color.alpha(opacity),
+            Color.multiply(color, opacity),
         );
         rl.drawLineEx(
             ib.getVertex(.bottom_back),
             ib.getVertex(.bottom_right),
             thick,
-            color.alpha(opacity),
+            Color.multiply(color, opacity),
         );
         rl.drawLineEx(
             ib.getVertex(.bottom_right),
@@ -249,13 +246,12 @@ pub const IsometricBox = struct {
     }
 
     // TODO: create a real bounding box -> Rect
-    // TODO: rename to Mesh
-    pub fn drawBoundingBox(
+    pub fn drawMesh(
         iso_box: IsometricBox,
         position: rl.Vector2,
         color: rl.Color,
     ) void {
-        return drawBoundingBoxEx(
+        return drawMeshEx(
             iso_box,
             position,
             1,
@@ -265,14 +261,22 @@ pub const IsometricBox = struct {
 };
 
 pub fn drawPointHandle(position: rl.Vector2, color: rl.Color) void {
-    rl.drawCircleV(position, 2, rl.Color.white);
+    rl.drawCircleV(
+        position,
+        2,
+        Color.copyAlpha(color, rl.Color.white),
+    );
     rl.drawCircleLinesV(position, 3, color);
 }
 
 pub fn drawSquareHandle(position: rl.Vector2, color: rl.Color) void {
     const start = position.subtractValue(2);
     const size = 4;
-    rl.drawRectangleV(start, rl.Vector2.one().scale(size), rl.Color.white);
+    rl.drawRectangleV(
+        start,
+        rl.Vector2.one().scale(size),
+        Color.copyAlpha(color, rl.Color.white),
+    );
     rl.drawRectangleLinesEx(
         rl.Rectangle.init(
             start.x,
@@ -286,7 +290,6 @@ pub fn drawSquareHandle(position: rl.Vector2, color: rl.Color) void {
 }
 
 pub fn drawCrossHandle(position: rl.Vector2, color: rl.Color) void {
-    rl.drawCircleV(position, 1, color);
     rl.drawLineEx(
         position.subtract(rl.Vector2.init(0, 3)),
         position.add(rl.Vector2.init(0, 3)),
@@ -299,4 +302,28 @@ pub fn drawCrossHandle(position: rl.Vector2, color: rl.Color) void {
         0.5,
         color,
     );
+    rl.drawCircleV(
+        position,
+        1,
+        Color.copyAlpha(color, rl.Color.white),
+    );
 }
+pub const Color = struct {
+    pub fn multiply(color: rl.Color, s: f32) rl.Color {
+        return rl.Color.init(
+            color.r,
+            color.g,
+            color.b,
+            @as(u8, @intFromFloat(@as(f32, @floatFromInt(color.a)) * s)),
+        );
+    }
+
+    pub fn copyAlpha(from: rl.Color, to: rl.Color) rl.Color {
+        return rl.Color.init(
+            to.r,
+            to.g,
+            to.b,
+            from.a,
+        );
+    }
+};
