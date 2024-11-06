@@ -20,11 +20,13 @@ pub fn main() !void {
 
     rl.setExitKey(.key_null);
 
+    // TODO: opne file select dialog to chose a file
+    // FIXME: handle error
     const config_path = "../../game/assets/config.json";
     var config = try core.config.readConfig(allocator, config_path);
     defer config.deinit(allocator);
 
-    // TODO: load tex from file picker
+    // TODO: load tex from the config file, in the config file you should have a relative to the config file, or absolute to system
     const tile = rl.loadTexture("./../../game/assets/tiles_spritesheet.png");
     rl.setTextureFilter(tile, .texture_filter_point);
     defer tile.unload();
