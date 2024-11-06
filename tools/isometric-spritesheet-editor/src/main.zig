@@ -38,6 +38,7 @@ pub fn main() !void {
         rl.Vector2.init(-100, -40),
         rl.Vector2.init(100, -40),
     );
+    // TODO: think of an easy system to manage world and screen positions
     const iso_box_pos = rl.Vector2.init(100, 100); // world position
 
     var is_dragging = false;
@@ -148,6 +149,7 @@ pub fn main() !void {
                 center_point.add(iso_box_pos),
                 rl.Color.magenta,
             );
+            // TODO: we probably want the currently dragged handle to be semi transperent to see underneath
             spirtesheet_iso_box.drawHandles(
                 center_point.add(iso_box_pos),
                 rl.Color.magenta,

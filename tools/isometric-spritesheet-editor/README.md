@@ -20,14 +20,22 @@ zig build release
 
 ## TODO
 - [ ] UI
-  - [ ] Two tabs, between tile config, and sprite tagger
+  - [ ] Bottom footer with shortcut
+  - [ ] right-side properties panel for project/sprite
+    - [ ] export/save button at the bottom
   - [x] zoom in and out with middle mouse scroll
   - [x] move camera with middle mouse drag OR space + right mouse drag
   - [x] transparent grid for sprite, grey background.
-- [ ] highlight tagged spirte with isometric bounding box, and sprite bounding box
-- [ ] small name on top
+- [ ] highlight tagged spirte with isometric bounding box
+  - [ ] and sprite bounding box
+    - [ ] resize by the sprite box
+  - [ ] double click to enter "master prespective edit", affect the prespective points used for this project
+  - [ ] show in right side editor panel properties of this box
+- [ ] small name on top (world space)
 - [ ] easy tagger - click on a point and it should snap to the grid with a new tag
-- [ ] Configure 4-axis point (Prespective Points)
+- [ ] Configure 4-axis point (Prespective Points) (on double click)
+  - [ ] add 'phantom' handle point just for qol.
+  - [ ] make it draggable by it's center point
 - [ ] tag tile with name
 - [ ] can have other scale of tiles (same prespective)
 - [ ] Read, Write, Validate projets files
