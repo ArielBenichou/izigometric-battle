@@ -75,6 +75,14 @@ pub const IsometricBox = struct {
         };
     }
 
+    pub fn add(self: IsometricBox, v: rl.Vector2) IsometricBox {
+        var points: [4]rl.Vector2 = undefined;
+        for (&points, 0..) |*p, i| {
+            p.* = self.points[i].add(v);
+        }
+        return .{ .points = points };
+    }
+
     pub const Axis = enum { x, y, z };
 
     fn direction(self: IsometricBox, axis: Axis) rl.Vector2 {
@@ -131,21 +139,30 @@ pub const IsometricBox = struct {
             .add(self.direction(.z).scale(0.5));
     }
 
-    pub fn add(self: IsometricBox, v: rl.Vector2) IsometricBox {
-        var points: [4]rl.Vector2 = undefined;
-        for (&points, 0..) |*p, i| {
-            p.* = self.points[i].add(v);
+    pub fn getBoundingBox(self: IsometricBox) rl.Rectangle {
+        var min_x: f32 = std.math.inf(f32);
+        var min_y: f32 = std.math.inf(f32);
+        var max_x: f32 = -std.math.inf(f32);
+        var max_y: f32 = -std.math.inf(f32);
+
+        for (std.enums.values(VertexName)) |v_name| {
+            const p = self.getVertex(v_name);
+            if (p.x < min_x) min_x = p.x;
+            if (p.x > max_x) max_x = p.x;
+            if (p.y < min_y) min_y = p.y;
+            if (p.y > max_y) max_y = p.y;
         }
-        return .{ .points = points };
+
+        return rl.Rectangle.init(min_x, min_y, max_x - min_x, max_y - min_y);
     }
 
     // RENDER
     pub fn drawHandles(
-        iso_box: IsometricBox,
+        self: IsometricBox,
         position: rl.Vector2,
         color: rl.Color,
     ) void {
-        const ib = iso_box.add(position);
+        const ib = self.add(position);
         drawPointHandle(ib.getVertex(.top_front), color);
         drawPointHandle(ib.getVertex(.top_back), color);
         drawPointHandle(ib.getVertex(.bottom_left), color);
@@ -159,13 +176,13 @@ pub const IsometricBox = struct {
     }
 
     pub fn drawMeshEx(
-        iso_box: IsometricBox,
+        self: IsometricBox,
         position: rl.Vector2,
         thick: f32,
         color: rl.Color,
     ) void {
         const opacity = 0.3;
-        const ib = iso_box.add(position);
+        const ib = self.add(position);
         // Top Plane
         rl.drawLineEx(
             ib.getVertex(.top_front),
@@ -245,47 +262,53 @@ pub const IsometricBox = struct {
         );
     }
 
-    // TODO: create a real bounding box -> Rect
     pub fn drawMesh(
-        iso_box: IsometricBox,
+        self: IsometricBox,
         position: rl.Vector2,
         color: rl.Color,
     ) void {
         return drawMeshEx(
-            iso_box,
+            self,
             position,
             1,
             color,
         );
     }
+    pub fn drawBoundingBox(
+        self: IsometricBox,
+        position: rl.Vector2,
+        color: rl.Color,
+    ) void {
+        var bbox = self.getBoundingBox();
+        bbox.x += position.x;
+        bbox.y += position.y;
+        rl.drawRectangleLinesEx(bbox, 1, color);
+        drawSquareHandle(rl.Vector2.init(bbox.x, bbox.y), color);
+        drawSquareHandle(rl.Vector2.init(bbox.x + bbox.width, bbox.y), color);
+        drawSquareHandle(rl.Vector2.init(bbox.x, bbox.y + bbox.height), color);
+        drawSquareHandle(rl.Vector2.init(bbox.x + bbox.width, bbox.y + bbox.height), color);
+    }
 };
 
 pub fn drawPointHandle(position: rl.Vector2, color: rl.Color) void {
+    rl.drawCircleV(position, 1.5, color);
     rl.drawCircleV(
         position,
-        2,
+        1,
         Color.copyAlpha(color, rl.Color.white),
     );
-    rl.drawCircleLinesV(position, 3, color);
 }
 
 pub fn drawSquareHandle(position: rl.Vector2, color: rl.Color) void {
-    const start = position.subtractValue(2);
-    const size = 4;
     rl.drawRectangleV(
-        start,
-        rl.Vector2.one().scale(size),
-        Color.copyAlpha(color, rl.Color.white),
-    );
-    rl.drawRectangleLinesEx(
-        rl.Rectangle.init(
-            start.x,
-            start.y,
-            size,
-            size,
-        ),
-        0.3,
+        position.subtractValue(1.25),
+        rl.Vector2.one().scale(2.5),
         color,
+    );
+    rl.drawRectangleV(
+        position.subtractValue(1),
+        rl.Vector2.one().scale(2),
+        Color.copyAlpha(color, rl.Color.white),
     );
 }
 

@@ -4,6 +4,10 @@ const rl = @import("raylib");
 const rgui = @import("raygui");
 
 pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
     rl.setConfigFlags(.{ .window_resizable = true });
     rl.initWindow(
         1000,
@@ -15,6 +19,10 @@ pub fn main() !void {
     rl.setTargetFPS(60);
 
     rl.setExitKey(.key_null);
+
+    const config_path = "../../game/assets/config.json";
+    var config = try core.config.readConfig(allocator, config_path);
+    defer config.deinit(allocator);
 
     // TODO: load tex from file picker
     const tile = rl.loadTexture("./../../game/assets/tiles_spritesheet.png");
@@ -30,16 +38,15 @@ pub fn main() !void {
     };
 
     // TODO: create a big State of the program state
-
     // Iso Box
     var spirtesheet_iso_box = core.rlx.IsometricBox.init(
-        rl.Vector2.init(0, 0),
-        rl.Vector2.init(0, 50),
-        rl.Vector2.init(-100, -40),
-        rl.Vector2.init(100, -40),
+        rl.Vector2.init(3.490075e0, 3.278778e0),
+        rl.Vector2.init(3.484404e0, 5.489115e1),
+        rl.Vector2.init(-9.973059e1, -4.8500137e1),
+        rl.Vector2.init(1.06128815e2, -4.8290726e1),
     );
     // TODO: think of an easy system to manage world and screen positions
-    const iso_box_pos = rl.Vector2.init(100, 100); // world position
+    const iso_box_pos = config.tags[0].position;
 
     var is_dragging = false;
     var box_vertex_dragging: core.rlx.IsometricBox.VertexName = undefined;
@@ -144,6 +151,21 @@ pub fn main() !void {
             }
         }
 
+        { // Print Debug
+            if (rl.isKeyPressed(.key_p)) {
+                std.debug.print("{}\n", .{spirtesheet_iso_box});
+            }
+        }
+
+        { // Save Config
+            if (rl.isKeyDown(.key_left_control) and rl.isKeyPressed(.key_s)) {
+                config.prespective_points = &spirtesheet_iso_box.points;
+                // FIXME: should not be using 0
+                config.tags[0].position = iso_box_pos;
+                try core.config.writeConfig(allocator, config, config_path);
+            }
+        }
+
         rl.beginDrawing();
         defer rl.endDrawing();
         rl.clearBackground(rl.Color.dark_gray);
@@ -153,7 +175,11 @@ pub fn main() !void {
             camera.begin();
             defer camera.end();
 
+            // Sprite
             core.rlx.Texture.drawWithCheckerboard(&tile, center_point);
+
+            // Overlay
+            spirtesheet_iso_box.drawBoundingBox(center_point.add(iso_box_pos), rl.Color.dark_blue);
             spirtesheet_iso_box.drawMesh(
                 center_point.add(iso_box_pos),
                 drawing_color,
