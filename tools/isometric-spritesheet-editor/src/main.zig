@@ -20,7 +20,7 @@ pub fn main() !void {
 
     rl.setExitKey(.key_null);
 
-    // TODO: opne file select dialog to chose a file
+    // TODO: open file select dialog to chose a file
     // FIXME: handle error
     const config_path = "../../game/assets/config.json";
     var config = try core.config.readConfig(allocator, config_path);
@@ -42,67 +42,9 @@ pub fn main() !void {
     );
     state.iso_box_pos = config.tags[0].position;
 
-    // TODO: think of a system for easier control of what action is happening
-    // if we can have a list of action and define what the user does,
-    // then we can render the cursor more easily without becoming unmatinable fast
-    // same for render.
-    // maybe we should cake it like that:
-    // INPUT -> STATE (part of the state is desired_action: Action enum)
-    // ----
-    // ACTION -> STATE (the desired_action is applied to the state)
-    // ----
-    // STATE -> RENDER
     while (!rl.windowShouldClose()) {
-        const center_point = rl.Vector2.init(
-            @as(f32, @floatFromInt(rl.getScreenWidth())) / 2.0,
-            @as(f32, @floatFromInt(rl.getScreenHeight())) / 2.0,
-        ); // screen position
-
-        // ---LOGIC HERE
         { // Cleanup
             rl.setMouseCursor(.mouse_cursor_default);
-        }
-
-        { // Translate based on mouse middle click
-            // or space + left_mouse_drag
-            const is_key_down_space = rl.isKeyDown(.key_space);
-            const is_space_dragging = is_key_down_space and rl.isMouseButtonDown(.mouse_button_left);
-            const is_middle_mouse_down = rl.isMouseButtonDown(.mouse_button_middle);
-            if (is_key_down_space or is_middle_mouse_down) {
-                rl.setMouseCursor(.mouse_cursor_pointing_hand);
-            }
-            if (is_space_dragging or is_middle_mouse_down) {
-                var delta = rl.getMouseDelta();
-                delta = delta.scale(-1.0 / state.camera.zoom);
-                state.camera.target = state.camera.target.add(delta);
-            }
-        }
-        { // Zoom based on mouse wheel
-            const wheel = rl.getMouseWheelMove();
-            if (wheel != 0) {
-                // Get the world point that is under the mouse
-                const mouse_world_pos = rl.getScreenToWorld2D(
-                    rl.getMousePosition(),
-                    state.camera,
-                );
-
-                // Set the offset to where the mouse is
-                state.camera.offset = rl.getMousePosition();
-
-                // Set the target to match, so that the state.camera maps the world space point
-                // under the cursor to the screen space point under the cursor at any zoom
-                state.camera.target = mouse_world_pos;
-
-                // Zoom increment
-
-                var scale_factor = 1.0 + (0.25 * @abs(wheel));
-                if (wheel < 0) scale_factor = 1.0 / scale_factor;
-                state.camera.zoom = rl.math.clamp(
-                    state.camera.zoom * scale_factor,
-                    0.125,
-                    64.0,
-                );
-            }
         }
 
         { // Save Config
@@ -116,37 +58,7 @@ pub fn main() !void {
 
         try logic(&state);
 
-        // TODO: move to render fn
-        rl.beginDrawing();
-        defer rl.endDrawing();
-        rl.clearBackground(rl.Color.dark_gray);
-        // ---RENDER HERE
-        const drawing_color = rl.Color.magenta.alpha(if (state.is_dragging) 0.5 else 1);
-        { // INSIDE CAMERA
-            state.camera.begin();
-            defer state.camera.end();
-
-            // Sprite
-            core.rlx.Texture.drawWithCheckerboard(&tile, center_point);
-
-            // Overlay
-            state.spirtesheet_iso_box.drawBoundingBox(center_point.add(state.iso_box_pos), rl.Color.dark_blue);
-            state.spirtesheet_iso_box.drawMesh(
-                center_point.add(state.iso_box_pos),
-                drawing_color,
-            );
-            state.spirtesheet_iso_box.drawHandles(
-                center_point.add(state.iso_box_pos),
-                drawing_color,
-            );
-        }
-
-        { // UI
-            _ = rgui.guiLabel(
-                rl.Rectangle.init(10, 10, 200, 50),
-                "Tab 1",
-            );
-        }
+        render(state, tile);
     }
 }
 
@@ -222,6 +134,34 @@ fn logic(state: *State) !void {
         try applyDesiredActionToState(state, .debug_print);
     }
 
+    { // Zoom based on mouse wheel
+        const wheel = rl.getMouseWheelMove();
+        if (wheel != 0) {
+            // Get the world point that is under the mouse
+            const mouse_world_pos = rl.getScreenToWorld2D(
+                rl.getMousePosition(),
+                state.camera,
+            );
+
+            // Set the offset to where the mouse is
+            state.camera.offset = rl.getMousePosition();
+
+            // Set the target to match, so that the state.camera maps the world space point
+            // under the cursor to the screen space point under the cursor at any zoom
+            state.camera.target = mouse_world_pos;
+
+            // Zoom increment
+
+            var scale_factor = 1.0 + (0.25 * @abs(wheel));
+            if (wheel < 0) scale_factor = 1.0 / scale_factor;
+            state.camera.zoom = rl.math.clamp(
+                state.camera.zoom * scale_factor,
+                0.125,
+                64.0,
+            );
+        }
+    }
+
     if (is_mouse_left_down) {
         state.is_dragging = @abs(state.last_mouse_click.?.distance(mouse_pos)) > 1;
     }
@@ -285,6 +225,20 @@ fn logic(state: *State) !void {
             }
         }
     }
+    { // Translate based on mouse middle click
+        // or space + left_mouse_drag
+        const is_key_down_space = rl.isKeyDown(.key_space);
+        const is_space_dragging = is_key_down_space and rl.isMouseButtonDown(.mouse_button_left);
+        const is_middle_mouse_down = rl.isMouseButtonDown(.mouse_button_middle);
+        if (is_key_down_space or is_middle_mouse_down) {
+            rl.setMouseCursor(.mouse_cursor_pointing_hand);
+        }
+        if (is_space_dragging or is_middle_mouse_down) {
+            var delta = rl.getMouseDelta();
+            delta = delta.scale(-1.0 / state.camera.zoom);
+            state.camera.target = state.camera.target.add(delta);
+        }
+    }
 
     if (is_ctrl and rl.isKeyPressed(.key_z)) {
         try applyDesiredActionToState(state, .undo);
@@ -339,4 +293,43 @@ fn applyDesiredActionToState(state: *State, action: DesiredAction) !void {
             );
         },
     };
+}
+
+fn render(state: State, tile: rl.Texture) void {
+    const center_point = rl.Vector2.init(
+        @as(f32, @floatFromInt(rl.getScreenWidth())) / 2.0,
+        @as(f32, @floatFromInt(rl.getScreenHeight())) / 2.0,
+    ); // screen position
+
+    rl.beginDrawing();
+    defer rl.endDrawing();
+    rl.clearBackground(rl.Color.dark_gray);
+
+    const drawing_color = drawing_color: {
+        const c = rl.Color.magenta;
+        if (state.last_clicked_vertex != null) {
+            if (state.is_dragging) {
+                break :drawing_color c.alpha(0.5);
+            }
+        }
+        break :drawing_color c;
+    };
+    { // INSIDE CAMERA
+        state.camera.begin();
+        defer state.camera.end();
+
+        // Sprite
+        core.rlx.Texture.drawWithCheckerboard(&tile, center_point);
+
+        // Overlay
+        state.spirtesheet_iso_box.drawBoundingBox(center_point.add(state.iso_box_pos), rl.Color.dark_blue);
+        state.spirtesheet_iso_box.drawMesh(
+            center_point.add(state.iso_box_pos),
+            drawing_color,
+        );
+        state.spirtesheet_iso_box.drawHandles(
+            center_point.add(state.iso_box_pos),
+            drawing_color,
+        );
+    }
 }
