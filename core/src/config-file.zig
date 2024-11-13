@@ -12,17 +12,13 @@ pub const Tag = struct {
 };
 
 pub const Config = struct {
+    // FIXME: shouldn't this be [4]Vector2
     prespective_points: []Vector2,
-    tags: []Tag,
+    tags: std.ArrayList(Tag),
 
     pub fn deinit(self: *Config, allocator: std.mem.Allocator) void {
         allocator.free(self.prespective_points);
-
-        defer allocator.free(self.tags);
-        for (self.tags) |tag| {
-            allocator.free(tag.name);
-            allocator.free(tag.variant);
-        }
+        self.tags.deinit();
     }
 };
 
@@ -57,7 +53,7 @@ pub fn readConfig(allocator: std.mem.Allocator, path: []const u8) !Config {
     // Convert the raw data into our structured format
     var config = Config{
         .prespective_points = try allocator.alloc(Vector2, config_data.prespective_points.len / 2),
-        .tags = try allocator.alloc(Tag, config_data.tags.len),
+        .tags = try ArrayList(Tag).initCapacity(allocator, config_data.tags.len),
     };
 
     // Convert flat array of f32 into Vector2 array
@@ -69,8 +65,8 @@ pub fn readConfig(allocator: std.mem.Allocator, path: []const u8) !Config {
     }
 
     // Convert tags
-    for (config_data.tags, 0..) |tag, i| {
-        config.tags[i] = .{
+    for (config_data.tags) |tag| {
+        try config.tags.append(.{
             .name = try allocator.dupe(u8, tag.name),
             .variant = try allocator.dupe(u8, tag.variant),
             .position = .{
@@ -78,7 +74,7 @@ pub fn readConfig(allocator: std.mem.Allocator, path: []const u8) !Config {
                 .y = tag.position[1],
             },
             .scale = tag.scale,
-        };
+        });
     }
 
     return config;
@@ -106,10 +102,10 @@ pub fn writeConfig(allocator: std.mem.Allocator, config: Config, path: []const u
         scale: f32,
     };
 
-    var tags = try ArrayList(JsonTag).initCapacity(allocator, config.tags.len);
+    var tags = try ArrayList(JsonTag).initCapacity(allocator, config.tags.items.len);
     defer tags.deinit();
 
-    for (config.tags) |tag| {
+    for (config.tags.items) |tag| {
         try tags.append(.{
             .name = tag.name,
             .variant = tag.variant,

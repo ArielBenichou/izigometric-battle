@@ -40,7 +40,9 @@ pub fn main() !void {
         config.prespective_points[2],
         config.prespective_points[3],
     );
-    state.iso_box_pos = config.tags[0].position;
+    for (config.tags.items) |tag| {
+        try state.objects.append(tag.position);
+    }
 
     while (!rl.windowShouldClose()) {
         { // Cleanup
@@ -50,8 +52,15 @@ pub fn main() !void {
         { // Save Config
             if (rl.isKeyDown(.key_left_control) and rl.isKeyPressed(.key_s)) {
                 config.prespective_points = &state.spirtesheet_iso_box.points;
-                // FIXME: should not be using 0
-                config.tags[0].position = state.iso_box_pos;
+                config.tags.clearRetainingCapacity();
+                for (state.objects.items) |obj| {
+                    try config.tags.append(.{
+                        .name = "moo",
+                        .variant = "",
+                        .position = obj,
+                        .scale = 1,
+                    });
+                }
                 try core.config.writeConfig(allocator, config, config_path);
             }
         }
@@ -76,8 +85,9 @@ const State = struct {
     history: History,
     // call this IsometricMesh
     spirtesheet_iso_box: core.rlx.IsometricBox = undefined,
-    // TODO: this should be an array of Vec2 to be used with the iso_box
-    iso_box_pos: rl.Vector2 = undefined,
+    objects: Objects,
+    /// index to objects
+    selected_object: ?usize = 0, // FIXME: should be null and then select flow
 
     camera: rl.Camera2D = undefined,
 
@@ -88,6 +98,7 @@ const State = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .history = History.init(allocator),
+            .objects = Objects.init(allocator),
             .camera = .{
                 .offset = rl.Vector2.zero(),
                 .target = rl.Vector2.zero(),
@@ -99,9 +110,11 @@ const State = struct {
 
     pub fn deinit(self: *Self) void {
         self.history.deinit();
+        self.objects.deinit();
     }
 };
 const History = std.ArrayList(DesiredAction);
+const Objects = std.ArrayList(rl.Vector2);
 
 const DesiredAction = union(enum) {
     // EDIT MESH
@@ -212,7 +225,8 @@ fn logic(state: *State) !void {
                 @as(f32, @floatFromInt(rl.getScreenWidth())) / 2.0,
                 @as(f32, @floatFromInt(rl.getScreenHeight())) / 2.0,
             ); // screen position
-            const iso_box = state.spirtesheet_iso_box.add(center_point.add(state.iso_box_pos));
+            const selected_obj_pos = state.objects.items[state.selected_object.?];
+            const iso_box = state.spirtesheet_iso_box.add(center_point.add(selected_obj_pos));
             if (isMouseHoveringAroundPosition(
                 iso_box.getVertex(vertex),
                 force_field_radius,
@@ -321,15 +335,18 @@ fn render(state: State, tile: rl.Texture) void {
         // Sprite
         core.rlx.Texture.drawWithCheckerboard(&tile, center_point);
 
-        // Overlay
-        state.spirtesheet_iso_box.drawBoundingBox(center_point.add(state.iso_box_pos), rl.Color.dark_blue);
-        state.spirtesheet_iso_box.drawMesh(
-            center_point.add(state.iso_box_pos),
-            drawing_color,
-        );
-        state.spirtesheet_iso_box.drawHandles(
-            center_point.add(state.iso_box_pos),
-            drawing_color,
-        );
+        if (state.selected_object) |selected_obj| {
+            const selected_obj_pos = state.objects.items[selected_obj];
+            // Overlay
+            state.spirtesheet_iso_box.drawBoundingBox(center_point.add(selected_obj_pos), rl.Color.dark_blue);
+            state.spirtesheet_iso_box.drawMesh(
+                center_point.add(selected_obj_pos),
+                drawing_color,
+            );
+            state.spirtesheet_iso_box.drawHandles(
+                center_point.add(selected_obj_pos),
+                drawing_color,
+            );
+        }
     }
 }
