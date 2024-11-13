@@ -157,7 +157,7 @@ pub const IsometricBox = struct {
     }
 
     // RENDER
-    pub fn drawHandles(
+    fn drawMeshHandles(
         self: IsometricBox,
         position: rl.Vector2,
         color: rl.Color,
@@ -180,6 +180,7 @@ pub const IsometricBox = struct {
         position: rl.Vector2,
         thick: f32,
         color: rl.Color,
+        draw_handles: bool,
     ) void {
         const opacity = 0.3;
         const ib = self.add(position);
@@ -260,33 +261,42 @@ pub const IsometricBox = struct {
             thick,
             color,
         );
+        if (draw_handles) {
+            self.drawMeshHandles(position, color);
+        }
     }
 
     pub fn drawMesh(
         self: IsometricBox,
         position: rl.Vector2,
         color: rl.Color,
+        draw_handles: bool,
     ) void {
         return drawMeshEx(
             self,
             position,
             1,
             color,
+            draw_handles,
         );
     }
+
     pub fn drawBoundingBox(
         self: IsometricBox,
         position: rl.Vector2,
         color: rl.Color,
+        draw_handles: bool,
     ) void {
         var bbox = self.getBoundingBox();
         bbox.x += position.x;
         bbox.y += position.y;
         rl.drawRectangleLinesEx(bbox, 1, color);
-        drawSquareHandle(rl.Vector2.init(bbox.x, bbox.y), color);
-        drawSquareHandle(rl.Vector2.init(bbox.x + bbox.width, bbox.y), color);
-        drawSquareHandle(rl.Vector2.init(bbox.x, bbox.y + bbox.height), color);
-        drawSquareHandle(rl.Vector2.init(bbox.x + bbox.width, bbox.y + bbox.height), color);
+        if (draw_handles) {
+            drawSquareHandle(rl.Vector2.init(bbox.x, bbox.y), color);
+            drawSquareHandle(rl.Vector2.init(bbox.x + bbox.width, bbox.y), color);
+            drawSquareHandle(rl.Vector2.init(bbox.x, bbox.y + bbox.height), color);
+            drawSquareHandle(rl.Vector2.init(bbox.x + bbox.width, bbox.y + bbox.height), color);
+        }
     }
 };
 

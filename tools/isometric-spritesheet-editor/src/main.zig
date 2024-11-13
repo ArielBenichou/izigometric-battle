@@ -4,6 +4,7 @@ const rl = @import("raylib");
 const rgui = @import("raygui");
 
 pub fn main() !void {
+    // TODO: when quit app with window X, lots of leaks...
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
@@ -22,7 +23,8 @@ pub fn main() !void {
 
     // TODO: open file select dialog to chose a file
     // FIXME: handle error
-    const config_path = "../../game/assets/config.json";
+    const config_path: []const u8 = try allocator.dupe(u8, "../../game/assets/config.json");
+    defer allocator.free(config_path);
     var config = try core.config.readConfig(allocator, config_path);
     defer config.deinit(allocator);
 
@@ -45,27 +47,12 @@ pub fn main() !void {
     }
 
     while (!rl.windowShouldClose()) {
+        // TODO: move all cursor stuff to render
         { // Cleanup
             rl.setMouseCursor(.mouse_cursor_default);
         }
 
-        { // Save Config
-            if (rl.isKeyDown(.key_left_control) and rl.isKeyPressed(.key_s)) {
-                config.prespective_points = &state.spirtesheet_iso_box.points;
-                config.tags.clearRetainingCapacity();
-                for (state.objects.items) |obj| {
-                    try config.tags.append(.{
-                        .name = "moo",
-                        .variant = "",
-                        .position = obj,
-                        .scale = 1,
-                    });
-                }
-                try core.config.writeConfig(allocator, config, config_path);
-            }
-        }
-
-        try logic(&state);
+        try logic(&state, &config, allocator, &config_path);
 
         render(state, tile);
     }
@@ -87,13 +74,13 @@ const State = struct {
     spirtesheet_iso_box: core.rlx.IsometricBox = undefined,
     objects: Objects,
     /// index to objects
-    selected_object: ?usize = 0, // FIXME: should be null and then select flow
+    selected_object: ?usize = null,
 
     camera: rl.Camera2D = undefined,
 
     is_dragging: bool = false,
     last_mouse_click: ?rl.Vector2 = null,
-    last_clicked_vertex: ?core.rlx.IsometricBox.VertexName = undefined,
+    last_clicked_vertex: ?core.rlx.IsometricBox.VertexName = null,
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
@@ -129,7 +116,7 @@ const DesiredAction = union(enum) {
 };
 
 /// THIS SHOULD HANDLE THE PRIORTY ORDER given the state and the input
-fn logic(state: *State) !void {
+fn logic(state: *State, config: *core.config.Config, allocator: std.mem.Allocator, config_path: *const []const u8) !void {
     // helpers vars
     const is_mouse_left_pressed = rl.isMouseButtonPressed(.mouse_button_left);
     const is_mouse_left_released = rl.isMouseButtonReleased(.mouse_button_left);
@@ -209,7 +196,7 @@ fn logic(state: *State) !void {
             });
             return;
         }
-    } else {
+    } else if (state.selected_object) |_| {
         const force_field_radius = 3;
         const handle_verticies = [_]core.rlx.IsometricBox.VertexName{
             .top_back,
@@ -251,6 +238,33 @@ fn logic(state: *State) !void {
             var delta = rl.getMouseDelta();
             delta = delta.scale(-1.0 / state.camera.zoom);
             state.camera.target = state.camera.target.add(delta);
+            return;
+        }
+    }
+
+    if (is_mouse_left_pressed) {
+        // TODO: logic of detecteing click on box
+        if (rl.isKeyDown(.key_left_shift)) {
+            state.selected_object = null;
+        } else {
+            state.selected_object = 0;
+        }
+    }
+
+    { // Save Config
+        if (rl.isKeyDown(.key_left_control) and rl.isKeyPressed(.key_s)) {
+            config.prespective_points = &state.spirtesheet_iso_box.points;
+            config.tags.clearRetainingCapacity();
+            for (state.objects.items) |obj| {
+                try config.tags.append(.{
+                    .name = "moo",
+                    .variant = "",
+                    .position = obj,
+                    .scale = 1,
+                });
+            }
+            try core.config.writeConfig(allocator, config.*, config_path.*);
+            return;
         }
     }
 
@@ -328,6 +342,7 @@ fn render(state: State, tile: rl.Texture) void {
         }
         break :drawing_color c;
     };
+
     { // INSIDE CAMERA
         state.camera.begin();
         defer state.camera.end();
@@ -335,18 +350,21 @@ fn render(state: State, tile: rl.Texture) void {
         // Sprite
         core.rlx.Texture.drawWithCheckerboard(&tile, center_point);
 
-        if (state.selected_object) |selected_obj| {
-            const selected_obj_pos = state.objects.items[selected_obj];
+        for (state.objects.items, 0..) |obj, i| {
+            const is_selected = state.selected_object == i;
             // Overlay
-            state.spirtesheet_iso_box.drawBoundingBox(center_point.add(selected_obj_pos), rl.Color.dark_blue);
-            state.spirtesheet_iso_box.drawMesh(
-                center_point.add(selected_obj_pos),
-                drawing_color,
+            state.spirtesheet_iso_box.drawBoundingBox(
+                center_point.add(obj),
+                rl.Color.dark_blue,
+                is_selected,
             );
-            state.spirtesheet_iso_box.drawHandles(
-                center_point.add(selected_obj_pos),
-                drawing_color,
-            );
+            if (is_selected) {
+                state.spirtesheet_iso_box.drawMesh(
+                    center_point.add(obj),
+                    drawing_color,
+                    is_selected,
+                );
+            }
         }
     }
 }
